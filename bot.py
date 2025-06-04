@@ -1,6 +1,7 @@
 import os
 import random
 import discord
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 #connecting the bot
@@ -9,6 +10,10 @@ from discord.ext import commands
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('models/gemini-1.5-pro')
+
 
 intents = discord.Intents.default()
 intents.message_content = True  
@@ -64,6 +69,31 @@ async def helpme(ctx):
 async def raise_exception(ctx):
     raise discord.DiscordException
 
+#GEMINI ADDITION
+@bot.command(name='geminiquestion')
+async def ask_gemini(ctx, *, question):
+    try:
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_ONLY_HIGH"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_ONLY_HIGH"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_ONLY_HIGH"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
+        ]
+        response = model.generate_content(question)
+        await ctx.send(f"**Q:** {question}\n**A:** {response.text}")
+    except Exception as e:
+        if "429" in str(e):
+            await ctx.send("Sorry, I have hit the limit.")
+        else:
+            await ctx.send("Please Try Again")
+            print(f"Error in geminiquestion command: {e}")
+        
+          
+@bot.tree.command(name="geminiquestion", description="Ask Gemini anything")
+async def ask_slash(interaction: discord.Interaction, question: str):
+    await interaction.response.defer()
+    response = model.generate_content(question)
+    await interaction.followup.send(f"**Q:** {question}\n**A:** {response.text}")
 
 @bot.event
 async def on_error(event, *args, **kwargs):
@@ -75,3 +105,5 @@ async def on_error(event, *args, **kwargs):
 
 
 bot.run(TOKEN)
+
+#run with python bot.py
