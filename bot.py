@@ -80,7 +80,13 @@ async def ask_gemini(ctx, *, question):
             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_ONLY_HIGH"}
         ]
         response = model.generate_content(question)
-        await ctx.send(f"**Q:** {question}\n**A:** {response.text}")
+        max_length = 2000
+        answer = f"**Q:** {question}\n**A:** {response.text}"
+        if len(answer) > max_length:
+            answer = answer[:max_length - 3] + "..."
+        await ctx.send(answer)
+        await ctx.message.add_reaction('✅')
+
     except Exception as e:
         if "429" in str(e):
             await ctx.send("Sorry, I have hit the limit.")
@@ -88,13 +94,19 @@ async def ask_gemini(ctx, *, question):
             await ctx.send("Please Try Again")
             print(f"Error in geminiquestion command: {e}")
         
-          
 @bot.tree.command(name="geminiquestion", description="Ask Gemini anything")
 async def ask_slash(interaction: discord.Interaction, question: str):
     await interaction.response.defer()
-    response = model.generate_content(question)
-    await interaction.followup.send(f"**Q:** {question}\n**A:** {response.text}")
-
+    try:
+        response = model.generate_content(question)
+        max_length = 2000
+        answer = f"**Q:** {question}\n**A:** {response.text}"
+        if len(answer) > max_length:
+            answer = answer[:max_length - 3] + "..."
+        await interaction.followup.send(answer)
+    except Exception as e:
+        await interaction.followup.send("Something went wrong. Try again.")
+        print(f"Error in slash geminiquestion: {e}")
 @bot.event
 async def on_error(event, *args, **kwargs):
     with open('err.log', 'a') as f:
@@ -102,7 +114,6 @@ async def on_error(event, *args, **kwargs):
             f.write(f'Unhandled message: {args[0]}\n')
         else:
             raise
-
 
 bot.run(TOKEN)
 
